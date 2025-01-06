@@ -1,21 +1,20 @@
 <#
 .Synopsis
-Exchange Receipient Management Tools Local Web Server
+	Exchange Receipient Management Tools Local Web Server
 .Description
-Starts webserver as powershell process as the current user
-Navigate to the web site to use Exchange Admin Tools
+	Starts webserver as powershell process as the current user
+	Navigate to the web site to use Exchange Admin Tools
 .Inputs
-None
+	None
 .Outputs
-None
+	None
 .Example
-Start-ExAdminWeb.ps1
+	Start-ExAdminWeb.ps1
 .Notes
-Based on: WebServer - Version 1.2.2, 2022-01-19
-Based on Author: Markus Scholtes
-Based on: https://github.com/MScholtes/WebServer
+	Based on: WebServer - Version 1.2.2, 2022-01-19
+	Based on Author: Markus Scholtes
+	Based on: https://github.com/MScholtes/WebServer
 .LINK
-
 #>
 
 
@@ -41,7 +40,7 @@ $HTML_WARN = "<div class=`"alert alert-warning  d-flex align-items-center`" role
 
 # Starting the powershell webserver
 "$(Get-Date -Format s) Starting Exchange Recipient Admin Webserver at: $($BINDING)"
-$LISTENER = New-Object System.Net.HttpListener
+$LISTENER = [Net.HttpListener]::new()
 $LISTENER.Prefixes.Add($BINDING)
 $LISTENER.Start()
 $Error.Clear()
@@ -54,15 +53,15 @@ try {
 	while ($LISTENER.IsListening) {
 		# analyze incoming request
 		$CONTEXT = $LISTENER.GetContext()
-		$REQUEST = $CONTEXT.Request
+		$Request = $CONTEXT.Request
 		$RESPONSE = $CONTEXT.Response
 		$RESPONSEWRITTEN = $FALSE
 
 		# log to console
-		"$(Get-Date -Format s) $($REQUEST.RemoteEndPoint.Address.ToString()) $($REQUEST.httpMethod) $($REQUEST.Url.PathAndQuery)"
+		"$(Get-Date -Format s) $($Request.RemoteEndPoint.Address.ToString()) $($Request.httpMethod) $($Request.Url.PathAndQuery)"
 		# and in log variable
-		$WEBLOG += "$(Get-Date -Format s) $($REQUEST.RemoteEndPoint.Address.ToString()) $($REQUEST.httpMethod) $($REQUEST.Url.PathAndQuery)`n"
-		$RECEIVED = '{0} {1}' -f $REQUEST.httpMethod, $REQUEST.Url.LocalPath
+		$WEBLOG += "$(Get-Date -Format s) $($Request.RemoteEndPoint.Address.ToString()) $($Request.httpMethod) $($Request.Url.PathAndQuery)`n"
+		$RECEIVED = "$($Request.HttpMethod) $($Request.Url.LocalPath)"
 		# check for known commands
 		switch ($RECEIVED) {
 			
@@ -76,7 +75,7 @@ try {
 				# Remote Mailbox Section
 				
 				# Process submitted form
-				if ($REQUEST.Url.Query) {
+				if ($Request.Url.Query) {
 					$Table = @{}
 					foreach ($Item in [URI]::UnescapeDataString(($REQUEST.Url.Query.Replace("?", ""))).Split("&")) {
 						$Table.Add($Item.Split("=")[0], $Item.Split("=")[1])
@@ -84,8 +83,7 @@ try {
 					try {
 						$Result = Enable-RemoteMailbox -Identity $Table['username'] -PrimarySMTPAddress "$($Table['primarysmtpaddress_local'])@$($Table['primarysmtpaddress_accepteddomain'])" -RemoteRoutingAddress "$($Table['remoteroutingaddress_local'])@$($Table['remoteroutingaddress_accepteddomain'])"
 						$HTML_RESULT = $HTML_SUCCESS.Replace("{result}", "User $($Table['username']) enabled as Remote Mailbox")
-					}
-					catch {
+					} catch {
 						$HTML_RESULT = $HTML_WARN.Replace("{result}", $Error -join "<br />")
 					}
 					
@@ -100,11 +98,9 @@ try {
 				# Prepare accepted domain list
 				$HTMLROWS_AD = ""
 				foreach ($Item in (Get-AcceptedDomain)) {
-					
 					if ($Item.Default) {
 						$HTMLROWS_AD += "`n<option selected value=`"$($Item.Name)`">$($Item.DomainName)</option>"
-					}
-					else {
+					} else {
 						$HTMLROWS_AD += "`n<option value=`"$($Item.Name)`">$($Item.DomainName)</option>"
 					}
 				}
@@ -112,11 +108,9 @@ try {
 				# Prepare remote routing domain list
 				$HTMLROWS_RRA = ""
 				foreach ($Item in (Get-AcceptedDomain)) {
-					
 					if ($Item.DomainName -like "*.mail.onmicrosoft.com") {
 						$HTMLROWS_RRA += "`n<option selected value=`"$($Item.Name)`">$($Item.DomainName)</option>"
-					}
-					else {
+					} else {
 						$HTMLROWS_RRA += "`n<option value=`"$($Item.Name)`">$($Item.DomainName)</option>"
 					}
 				}
@@ -153,7 +147,7 @@ try {
 						<a href=`"#`">$($Item.DisplayName)</a></th>
 						<td>$($Item.PrimarySMTPAddress)</td>
 						<td>$($Item.WhenCreated)</td>
-						</tr>";
+						</tr>"
 					}
 					elseif ($Item.RecipientTypeDetails -eq "MailUniversalSecurityGroup") {
 						$HTMLROWS_MES += "
@@ -162,7 +156,7 @@ try {
 						<a href=`"#`">$($Item.DisplayName)</a></th>
 						<td>$($Item.PrimarySMTPAddress)</td>
 						<td>$($Item.WhenCreated)</td>
-						</tr>";
+						</tr>"
 					}
 				}
 
@@ -183,7 +177,7 @@ try {
 					<a href=`"#`">$($Item.DisplayName)</a></th>
 					<td>$($Item.PrimarySMTPAddress)</td>
 					<td>$($Item.RecipientType)</td>
-					</tr>";
+					</tr>"
 				}
 
 				# Create response and replace template placeholders
@@ -223,7 +217,7 @@ try {
 					<a href=`"#`">$($Item.Name)</a></th>
 					<td>$($Item.DomainName)</td>
 					<td>$($Item.DomainType)</td>
-					</tr>";
+					</tr>"
 				}
 
 				# Create response and replace template placeholders
